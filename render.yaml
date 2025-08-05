@@ -22,7 +22,7 @@ services:
     # The command to build your app
     buildCommand: "./build.sh"
     # The command to start your app
-    startCommand: "gunicorn daily_management.wsgi"
+    startCommand: "gunicorn daily_management.daily_management.wsgi"
     # Environment variables for your app
     envVars:
       - key: DATABASE_URL
