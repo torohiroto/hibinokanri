@@ -1,0 +1,41 @@
+# This file configures the services for your Django app on Render.
+# You can deploy this by creating a new "Blueprint" service in Render
+# and connecting it to your repository.
+#
+# For more details, see the Render documentation:
+# https://render.com/docs/deploy-django
+
+services:
+  # A PostgreSQL database service
+  - type: pserv
+    name: postgres
+    # The major version of PostgreSQL to use.
+    postgresMajorVersion: 13
+    # You can add a plan type if you need more resources
+    # plan: standard
+
+  # The Django web service
+  - type: web
+    name: daily-management-app
+    # The runtime environment for your app
+    env: python
+    # The command to build your app
+    buildCommand: "./build.sh"
+    # The command to start your app
+    startCommand: "gunicorn daily_management.wsgi"
+    # Environment variables for your app
+    envVars:
+      - key: DATABASE_URL
+        fromService:
+          type: pserv
+          name: postgres
+          property: connectionString
+      - key: SECRET_KEY
+        # This will generate a random secret key for you.
+        # For production, you should set a persistent secret key
+        # in the Render dashboard environment variables.
+        generateValue: true
+      - key: WEB_CONCURRENCY
+        # Number of Gunicorn workers to spin up.
+        # Render recommends 2-4 for a standard instance.
+        value: 4

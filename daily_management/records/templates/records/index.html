@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日々の管理</title>
+</head>
+<body>
+    <h1>日々の管理</h1>
+    <p>ようこそ！</p>
+    <ul>
+        <li><a href="{% url 'create_record' %}">新しい記録を追加する</a></li>
+        <li><a href="{% url 'record_list' %}">記録一覧を見る</a></li>
+        <li><a href="{% url 'data_visualization' %}">データを可視化する</a></li>
+    </ul>
+</body>
+</html>

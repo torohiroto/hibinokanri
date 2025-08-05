@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>データ可視化</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        #chart-container {
+            display: flex;
+            flex-direction: row;
+        }
+        #chart {
+            flex-grow: 1;
+        }
+        #controls {
+            margin-left: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+    </style>
+</head>
+<body>
+    <h1>データ可視化</h1>
+    <div id="chart-container">
+        <div id="chart">
+            <canvas id="myChart"></canvas>
+        </div>
+        <div id="controls">
+            <h3>表示項目</h3>
+            <label><input type="checkbox" data-dataset="my_mood" checked> 自分の機嫌</label>
+            <label><input type="checkbox" data-dataset="wife_mood" checked> 妻の機嫌</label>
+            <label><input type="checkbox" data-dataset="max_temp"> 最高気温</label>
+            <label><input type="checkbox" data-dataset="min_temp"> 最低気温</label>
+            <label><input type="checkbox" data-dataset="max_pressure"> 最高気圧</label>
+            <label><input type="checkbox" data-dataset="min_pressure"> 最低気圧</label>
+            <label><input type="checkbox" data-dataset="humidity"> 湿度</label>
+            <label><input type="checkbox" data-dataset="pollen"> 花粉</label>
+            <label><input type="checkbox" data-dataset="pm25"> PM2.5</label>
+        </div>
+    </div>
+
+    <a href="{% url 'index' %}">ホームに戻る</a>
+
+    <script>
+        const chartData = JSON.parse('{{ chart_data|safe }}');
+        const ratingLabels = {1: 'D', 2: 'C', 3: 'B', 4: 'A', 5: 'S'};
+
+        const datasets = [
+            { label: '自分の機嫌', data: chartData.datasets.my_mood, borderColor: '#1f77b4', yAxisID: 'yMood', hidden: false },
+            { label: '妻の機嫌', data: chartData.datasets.wife_mood, borderColor: '#ff7f0e', yAxisID: 'yMood', hidden: false },
+            { label: '最高気温', data: chartData.datasets.max_temp, borderColor: '#d62728', yAxisID: 'yTemp', hidden: true },
+            { label: '最低気温', data: chartData.datasets.min_temp, borderColor: '#9467bd', yAxisID: 'yTemp', hidden: true },
+            { label: '最高気圧', data: chartData.datasets.max_pressure, borderColor: '#8c564b', yAxisID: 'yPressure', hidden: true },
+            { label: '最低気圧', data: chartData.datasets.min_pressure, borderColor: '#e377c2', yAxisID: 'yPressure', hidden: true },
+            { label: '湿度', data: chartData.datasets.humidity, borderColor: '#7f7f7f', yAxisID: 'yHumidity', hidden: true },
+            { label: '花粉', data: chartData.datasets.pollen, borderColor: '#bcbd22', yAxisID: 'yRating', hidden: true },
+            { label: 'PM2.5', data: chartData.datasets.pm25, borderColor: '#17becf', yAxisID: 'yRating', hidden: true }
+        ];
+
+        const config = {
+            type: 'line',
+            data: {
+                labels: chartData.dates,
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                scales: {
+                    yMood: { type: 'linear', display: true, position: 'left', title: { display: true, text: '機嫌' }, ticks: { callback: value => ratingLabels[value] } },
+                    yTemp: { type: 'linear', display: false, position: 'right', title: { display: true, text: '気温 (°C)' }, grid: { drawOnChartArea: false } },
+                    yPressure: { type: 'linear', display: false, position: 'right', title: { display: true, text: '気圧 (hPa)' }, grid: { drawOnChartArea: false } },
+                    yHumidity: { type: 'linear', display: false, position: 'right', title: { display: true, text: '湿度 (%)' }, grid: { drawOnChartArea: false } },
+                    yRating: { type: 'linear', display: false, position: 'right', title: { display: true, text: '評価' }, grid: { drawOnChartArea: false }, ticks: { callback: value => ratingLabels[value] } }
+                }
+            }
+        };
+
+        const myChart = new Chart(document.getElementById('myChart'), config);
+
+        document.querySelectorAll('#controls input[type="checkbox"]').forEach(checkbox => {
+            checkbox.addEventListener('change', (event) => {
+                const datasetLabel = event.target.nextSibling.textContent.trim();
+                const dataset = myChart.data.datasets.find(d => d.label === datasetLabel);
+                if (dataset) {
+                    dataset.hidden = !event.target.checked;
+                    const yAxis = myChart.options.scales[dataset.yAxisID];
+                    if(yAxis) {
+                        // Show y-axis if at least one dataset using it is visible
+                        const isAxisInUse = myChart.data.datasets.some(d => d.yAxisID === dataset.yAxisID && !d.hidden);
+                        yAxis.display = isAxisInUse;
+                    }
+                    myChart.update();
+                }
+            });
+        });
+
+        // Initial setup for axes visibility
+        function updateAxesVisibility() {
+            Object.keys(myChart.options.scales).forEach(axisID => {
+                if (axisID.startsWith('y')) {
+                    const isAxisInUse = myChart.data.datasets.some(d => d.yAxisID === axisID && !d.hidden);
+                    myChart.options.scales[axisID].display = isAxisInUse;
+                }
+            });
+            myChart.update();
+        }
+        updateAxesVisibility();
+
+    </script>
+</body>
+</html>
