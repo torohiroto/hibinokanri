@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>記録一覧</title>
+</head>
+<body>
+    <h1>記録一覧</h1>
+
+    {% if messages %}
+    <ul class="messages">
+        {% for message in messages %}
+        <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+
+    <a href="{% url 'create_record' %}">新しい記録を追加</a>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>日付</th>
+                <th>天気</th>
+                <th>自分の機嫌</th>
+                <th>妻の機嫌</th>
+                <th>アクション</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for record in records %}
+            <tr>
+                <td><a href="{% url 'update_record' pk=record.pk %}">{{ record.date }}</a></td>
+                <td>{{ record.get_weather_display }}</td>
+                <td>{{ record.my_mood }}</td>
+                <td>{{ record.wife_mood }}</td>
+                <td>
+                    <a href="{% url 'update_record' pk=record.pk %}">編集</a> |
+                    <a href="{% url 'delete_record' pk=record.pk %}">削除</a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5">記録がありません。</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <a href="{% url 'index' %}">ホームに戻る</a>
+</body>
+</html>
