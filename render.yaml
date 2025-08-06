@@ -1,11 +1,8 @@
-services:
-  # A PostgreSQL database service
-  - type: db
-    name: postgres
-    plan: free # Use the free tier for the database
-    postgresMajorVersion: 13
+databases:
+  - name: postgres
+    plan: free
 
-  # The Django web service
+services:
   - type: web
     name: daily-management-app
     env: python
@@ -13,8 +10,7 @@ services:
     startCommand: "gunicorn daily_management.daily_management.wsgi"
     envVars:
       - key: DATABASE_URL
-        fromService:
-          type: db # Match the database service type
+        fromDatabase:
           name: postgres
           property: connectionString
       - key: SECRET_KEY
