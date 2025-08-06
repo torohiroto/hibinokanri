@@ -8,7 +8,7 @@ services:
     env: python
     plan: free
     buildCommand: "./build.sh"
-    startCommand: "gunicorn daily_management.daily_management.wsgi"
+    startCommand: "gunicorn project_config.wsgi"
     envVars:
       - key: DATABASE_URL
         fromDatabase:
