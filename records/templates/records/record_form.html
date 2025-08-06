@@ -9,9 +9,73 @@
     <h1>記録フォーム</h1>
     <form method="post">
         {% csrf_token %}
-        {{ form.as_p }}
+
+        <p>
+            <label for="id_date">日付:</label>
+            {{ form.date }}
+            <button type="button" id="fetch-weather-btn">天気データを取得</button>
+            <span id="weather-status"></span>
+        </p>
+        <p><label for="id_weather">天気:</label>{{ form.weather }}</p>
+        <p><label for="id_max_pressure">最高気圧 (hPa):</label>{{ form.max_pressure }}</p>
+        <p><label for="id_min_pressure">最低気圧 (hPa):</label>{{ form.min_pressure }}</p>
+        <p><label for="id_max_temperature">最高気温 (°C):</label>{{ form.max_temperature }}</p>
+        <p><label for="id_min_temperature">最低気温 (°C):</label>{{ form.min_temperature }}</p>
+        <p><label for="id_humidity">湿度 (%):</label>{{ form.humidity }}</p>
+        <p><label for="id_pollen">花粉状況:</label>{{ form.pollen }}</p>
+        <p><label for="id_pm25">PM2.5飛散状況:</label>{{ form.pm25 }}</p>
+        <p><label for="id_my_mood">自分の機嫌:</label>{{ form.my_mood }}</p>
+        <p><label for="id_wife_mood">妻の機嫌:</label>{{ form.wife_mood }}</p>
+        <p><label for="id_headache_medicine">頭痛薬接種:</label>{{ form.headache_medicine }}</p>
+        <p><label for="id_mishap">失態の有無:</label>{{ form.mishap }}</p>
+        <p><label for="id_diary">日記:</label><br>{{ form.diary }}</p>
+
         <button type="submit">保存</button>
     </form>
     <a href="{% url 'record_list' %}">記録一覧に戻る</a>
+
+    <script>
+        document.getElementById('fetch-weather-btn').addEventListener('click', () => {
+            const dateInput = document.getElementById('id_date');
+            const statusSpan = document.getElementById('weather-status');
+            const date = dateInput.value;
+
+            if (!date) {
+                statusSpan.textContent = '日付を選択してください。';
+                return;
+            }
+
+            statusSpan.textContent = '天気データを取得中...';
+
+            fetch(`/api/get-weather/?date=${date}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.error) {
+                        statusSpan.textContent = `エラー: ${data.error}`;
+                        return;
+                    }
+
+                    // Populate form fields
+                    document.getElementById('id_weather').value = data.weather || '';
+                    document.getElementById('id_max_temperature').value = data.max_temperature || '';
+                    document.getElementById('id_min_temperature').value = data.min_temperature || '';
+                    document.getElementById('id_humidity').value = data.humidity || '';
+                    // Note: API provides one pressure value, so we set both fields to the same value.
+                    document.getElementById('id_max_pressure').value = data.pressure || '';
+                    document.getElementById('id_min_pressure').value = data.pressure || '';
+
+                    statusSpan.textContent = 'データを取得しました。';
+                })
+                .catch(e => {
+                    console.error('Fetch error:', e);
+                    statusSpan.textContent = 'データの取得に失敗しました。';
+                });
+        });
+    </script>
 </body>
 </html>
