@@ -6,6 +6,7 @@ services:
   - type: web
     name: daily-management-app
     env: python
+    plan: free
     buildCommand: "./build.sh"
     startCommand: "gunicorn daily_management.daily_management.wsgi"
     envVars:
