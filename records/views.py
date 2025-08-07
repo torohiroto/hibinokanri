@@ -3,10 +3,9 @@ from .models import DailyRecord
 from .forms import DailyRecordForm
 from django.contrib import messages
 import json
-import os
 import requests
 from django.http import JsonResponse
-from datetime import datetime, date, timedelta
+from datetime import datetime, date
 import traceback
 
 def index(request):
@@ -83,67 +82,84 @@ def get_weather_data(request):
 
     lat = 34.0663
     lon = 132.9949
-    api_key = os.environ.get('OPENWEATHER_API_KEY')
-    if not api_key:
-        return JsonResponse({'error': 'APIキーが設定されていません。'}, status=500)
-
-    today = date.today()
-    if target_date < today:
-        dt = int(datetime.combine(target_date, datetime.min.time()).timestamp())
-        url = f"http://api.openweathermap.org/data/3.0/onecall/timemachine?lat={lat}&lon={lon}&dt={dt}&appid={api_key}&units=metric&lang=ja"
-    else:
-        url = f"https://api.openweathermap.org/data/3.0/onecall?lat={lat}&lon={lon}&exclude=minutely,hourly,current&appid={api_key}&units=metric&lang=ja"
 
     try:
-        response = requests.get(url)
-        print(f"--- Weather API Request URL: {url}")
-        print(f"--- Weather API Response Status: {response.status_code}")
-        print(f"--- Weather API Response Body: {response.text}")
-        response.raise_for_status()
-        data = response.json()
-
-        weather_data = None
-        if 'daily' in data:
-            for day_data in data['daily']:
-                if date.fromtimestamp(day_data['dt']) == target_date:
-                    weather_data = day_data
-                    break
-        elif 'data' in data:
-            weather_data = data['data'][0]
-
-        if not weather_data:
-            return JsonResponse({'error': '指定された日付のデータが見つかりませんでした。'}, status=404)
-
-        if 'weather' not in weather_data or not weather_data['weather']:
-             return JsonResponse({'error': 'APIレスポンスに天気の詳細が含まれていません。'}, status=500)
-
-        weather_mapping = {
-            'Clear': 'sunny', 'Clouds': 'cloudy', 'Rain': 'rainy',
-            'Drizzle': 'rainy', 'Thunderstorm': 'rainy', 'Snow': 'rainy',
-            'Mist': 'cloudy', 'Haze': 'cloudy', 'Fog': 'cloudy',
+        # --- Get main weather data ---
+        weather_params = {
+            "latitude": lat,
+            "longitude": lon,
+            "daily": "weather_code,temperature_2m_max,temperature_2m_min,surface_pressure_mean,relative_humidity_2m_mean",
+            "timezone": "Asia/Tokyo",
+            "start_date": target_date_str,
+            "end_date": target_date_str,
         }
+        weather_url = "https://api.open-meteo.com/v1/forecast"
+        response_weather = requests.get(weather_url, params=weather_params)
+        response_weather.raise_for_status()
+        weather_data = response_weather.json()
 
-        if 'temp' in weather_data and isinstance(weather_data['temp'], dict):
-            max_temp = weather_data['temp']['max']
-            min_temp = weather_data['temp']['min']
-        else:
-            max_temp = weather_data.get('temp')
-            min_temp = weather_data.get('temp')
+        # --- Get air quality data ---
+        air_quality_params = {
+            "latitude": lat,
+            "longitude": lon,
+            "hourly": "pm2_5",
+            "start_date": target_date_str,
+            "end_date": target_date_str,
+            "timezone": "Asia/Tokyo",
+        }
+        air_quality_url = "https://air-quality-api.open-meteo.com/v1/air-quality"
+        response_air = requests.get(air_quality_url, params=air_quality_params)
+        response_air.raise_for_status()
+        air_data = response_air.json()
+
+        # --- Process and combine data ---
+        daily_data = weather_data.get('daily', {})
+
+        # WMO Weather code mapping
+        weather_code_mapping = {
+            0: 'sunny',  # Clear sky
+            1: 'sunny',  # Mainly clear
+            2: 'cloudy', # Partly cloudy
+            3: 'cloudy', # Overcast
+            45: 'cloudy',# Fog
+            48: 'cloudy',# Depositing rime fog
+            51: 'rainy', 53: 'rainy', 55: 'rainy', # Drizzle
+            61: 'rainy', 63: 'rainy', 65: 'rainy', # Rain
+            80: 'rainy', 81: 'rainy', 82: 'rainy', # Rain showers
+        }
+        weather_code = daily_data.get('weather_code', [None])[0]
+
+        # PM2.5 rating
+        pm25_avg = None
+        if air_data.get('hourly', {}).get('pm2_5'):
+            pm25_values = [v for v in air_data['hourly']['pm2_5'] if v is not None]
+            if pm25_values:
+                pm25_avg = sum(pm25_values) / len(pm25_values)
+
+        pm25_rating = ''
+        if pm25_avg is not None:
+            if pm25_avg <= 12: pm25_rating = 'S'
+            elif pm25_avg <= 35: pm25_rating = 'A'
+            elif pm25_avg <= 55: pm25_rating = 'B'
+            elif pm25_avg <= 150: pm25_rating = 'C'
+            else: pm25_rating = 'D'
 
         mapped_data = {
-            'weather': weather_mapping.get(weather_data['weather'][0]['main'], ''),
-            'max_temperature': max_temp,
-            'min_temperature': min_temp,
-            'humidity': weather_data['humidity'],
-            'pressure': weather_data['pressure'],
+            'weather': weather_code_mapping.get(weather_code, ''),
+            'max_temperature': daily_data.get('temperature_2m_max', [None])[0],
+            'min_temperature': daily_data.get('temperature_2m_min', [None])[0],
+            'humidity': daily_data.get('relative_humidity_2m_mean', [None])[0],
+            'pressure': daily_data.get('surface_pressure_mean', [None])[0],
+            'pm25': pm25_rating,
         }
 
         return JsonResponse(mapped_data)
 
-    except requests.exceptions.HTTPError as http_err:
-        print(f"--- HTTP error occurred: {http_err}")
-        return JsonResponse({'error': f'APIからエラーが返されました: {response.status_code}'}, status=500)
+    except requests.exceptions.RequestException as e:
+        print(f"--- API Request Error: {e}")
+        traceback.print_exc()
+        return JsonResponse({'error': f'APIの呼び出しに失敗しました: {e}'}, status=500)
     except Exception as e:
-        print(f"--- An unexpected error occurred: {e}")
+        print(f"--- Data Processing Error: {e}")
         traceback.print_exc()
         return JsonResponse({'error': 'サーバーで予期せぬエラーが発生しました。'}, status=500)
