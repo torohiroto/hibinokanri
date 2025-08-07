@@ -65,9 +65,9 @@
                     document.getElementById('id_max_temperature').value = data.max_temperature || '';
                     document.getElementById('id_min_temperature').value = data.min_temperature || '';
                     document.getElementById('id_humidity').value = data.humidity || '';
-                    // Note: API provides one pressure value, so we set both fields to the same value.
-                    document.getElementById('id_max_pressure').value = data.pressure || '';
-                    document.getElementById('id_min_pressure').value = data.pressure || '';
+                    document.getElementById('id_max_pressure').value = data.max_pressure || '';
+                    document.getElementById('id_min_pressure').value = data.min_pressure || '';
+                    document.getElementById('id_pm25').value = data.pm25 || '';
 
                     statusSpan.textContent = 'データを取得しました。';
                 })
