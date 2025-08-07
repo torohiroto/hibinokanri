@@ -36,13 +36,13 @@ class DailyRecord(models.Model):
         choices=WEATHER_CHOICES,
         blank=True
     )
-    max_pressure = models.IntegerField(
+    max_pressure = models.FloatField(
         verbose_name='最高気圧 (hPa)',
         null=True,
         blank=True,
         help_text='ヘクトパスカルで入力'
     )
-    min_pressure = models.IntegerField(
+    min_pressure = models.FloatField(
         verbose_name='最低気圧 (hPa)',
         null=True,
         blank=True,
