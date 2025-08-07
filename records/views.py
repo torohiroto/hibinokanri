@@ -88,7 +88,7 @@ def get_weather_data(request):
         weather_params = {
             "latitude": lat,
             "longitude": lon,
-            "daily": "weather_code,temperature_2m_max,temperature_2m_min,surface_pressure_mean,relative_humidity_2m_mean",
+            "daily": "weather_code,temperature_2m_max,temperature_2m_min,pressure_msl_max,pressure_msl_min,relative_humidity_2m_mean",
             "timezone": "Asia/Tokyo",
             "start_date": target_date_str,
             "end_date": target_date_str,
@@ -115,21 +115,13 @@ def get_weather_data(request):
         # --- Process and combine data ---
         daily_data = weather_data.get('daily', {})
 
-        # WMO Weather code mapping
         weather_code_mapping = {
-            0: 'sunny',  # Clear sky
-            1: 'sunny',  # Mainly clear
-            2: 'cloudy', # Partly cloudy
-            3: 'cloudy', # Overcast
-            45: 'cloudy',# Fog
-            48: 'cloudy',# Depositing rime fog
-            51: 'rainy', 53: 'rainy', 55: 'rainy', # Drizzle
-            61: 'rainy', 63: 'rainy', 65: 'rainy', # Rain
-            80: 'rainy', 81: 'rainy', 82: 'rainy', # Rain showers
+            0: 'sunny', 1: 'sunny', 2: 'cloudy', 3: 'cloudy', 45: 'cloudy', 48: 'cloudy',
+            51: 'rainy', 53: 'rainy', 55: 'rainy', 61: 'rainy', 63: 'rainy', 65: 'rainy',
+            80: 'rainy', 81: 'rainy', 82: 'rainy',
         }
         weather_code = daily_data.get('weather_code', [None])[0]
 
-        # PM2.5 rating
         pm25_avg = None
         if air_data.get('hourly', {}).get('pm2_5'):
             pm25_values = [v for v in air_data['hourly']['pm2_5'] if v is not None]
@@ -148,8 +140,9 @@ def get_weather_data(request):
             'weather': weather_code_mapping.get(weather_code, ''),
             'max_temperature': daily_data.get('temperature_2m_max', [None])[0],
             'min_temperature': daily_data.get('temperature_2m_min', [None])[0],
+            'max_pressure': daily_data.get('pressure_msl_max', [None])[0],
+            'min_pressure': daily_data.get('pressure_msl_min', [None])[0],
             'humidity': daily_data.get('relative_humidity_2m_mean', [None])[0],
-            'pressure': daily_data.get('surface_pressure_mean', [None])[0],
             'pm25': pm25_rating,
         }
 
