@@ -41,6 +41,7 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware", # Whitenoise middleware
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "project_config.middleware.BasicAuthMiddleware", # Custom Basic Auth
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",

@@ -16,5 +16,9 @@ services:
           property: connectionString
       - key: SECRET_KEY
         generateValue: true
+      - key: BASIC_AUTH_USER
+        value: "torohi"
+      - key: BASIC_AUTH_PASSWORD
+        generateValue: true # Generates a random password, user should set their own
       - key: WEB_CONCURRENCY
         value: 4
