@@ -4,9 +4,10 @@ from .forms import DailyRecordForm
 from django.contrib import messages
 import json
 import requests
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from datetime import datetime, date
 import traceback
+import csv
 
 def index(request):
     return render(request, 'records/index.html')
@@ -156,3 +157,37 @@ def get_weather_data(request):
         print(f"--- Data Processing Error: {e}")
         traceback.print_exc()
         return JsonResponse({'error': 'サーバーで予期せぬエラーが発生しました。'}, status=500)
+
+def export_csv(request):
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
+    response['Content-Disposition'] = 'attachment; filename="daily_records.csv"'
+
+    writer = csv.writer(response)
+
+    # Write header row
+    header = [field.verbose_name for field in DailyRecord._meta.fields]
+    writer.writerow(header)
+
+    # Write data rows
+    records = DailyRecord.objects.all().order_by('date')
+    for record in records:
+        row = [
+            record.id,
+            record.date,
+            record.get_weather_display(), # Use display value for choice fields
+            record.max_pressure,
+            record.min_pressure,
+            record.max_temperature,
+            record.min_temperature,
+            record.humidity,
+            record.pollen,
+            record.pm25,
+            record.my_mood,
+            record.wife_mood,
+            record.get_headache_medicine_display(),
+            "有り" if record.mishap else "無し", # Display value for boolean
+            record.diary,
+        ]
+        writer.writerow(row)
+
+    return response
