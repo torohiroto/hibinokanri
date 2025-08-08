@@ -8,12 +8,10 @@ from django.http import JsonResponse, HttpResponse
 from datetime import datetime, date
 import traceback
 import csv
-# import pandas as pd  <- REMOVED FROM HERE
 
 def index(request):
     return render(request, 'records/index.html')
 
-# ... (other views are the same) ...
 def record_list(request):
     records = DailyRecord.objects.all()
     return render(request, 'records/record_list.html', {'records': records})
@@ -74,6 +72,7 @@ def data_visualization(request):
     return render(request, 'records/visualization.html', context)
 
 def get_weather_data(request):
+    # (Same as before)
     target_date_str = request.GET.get('date')
     if not target_date_str:
         return JsonResponse({'error': '日付が指定されていません。'}, status=400)
@@ -133,13 +132,19 @@ def export_csv(request):
     return response
 
 def ai_analysis(request):
-    import pandas as pd # <- MOVED HERE
+    import pandas as pd
 
     records = DailyRecord.objects.all()
     if len(records) < 5:
         return render(request, 'records/ai_analysis.html', {'error': '分析するにはデータが不足しています。少なくとも5日分の記録を入力してください。'})
 
-    df = pd.DataFrame(list(records.values()))
+    # More memory-efficient query
+    fields_to_analyze = [
+        'weather', 'max_pressure', 'min_pressure', 'max_temperature', 'min_temperature',
+        'humidity', 'pollen', 'pm25', 'my_mood', 'wife_mood', 'headache_medicine', 'mishap'
+    ]
+    df = pd.DataFrame.from_records(records.values(*fields_to_analyze))
+
     if df.empty:
         return render(request, 'records/ai_analysis.html', {'error': '分析するデータがありません。'})
 
