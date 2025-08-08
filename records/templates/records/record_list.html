@@ -16,7 +16,9 @@
     </ul>
     {% endif %}
 
-    <a href="{% url 'create_record' %}">新しい記録を追加</a>
+    <a href="{% url 'create_record' %}">新しい記録を追加</a> |
+    <a href="{% url 'export_csv' %}">CSV形式でダウンロード</a>
+    <br><br>
     <table border="1">
         <thead>
             <tr>

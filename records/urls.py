@@ -9,4 +9,5 @@ urlpatterns = [
     path('<int:pk>/delete/', views.delete_record, name='delete_record'),
     path('visualize/', views.data_visualization, name='data_visualization'),
     path('api/get-weather/', views.get_weather_data, name='get_weather_data'),
+    path('export/csv/', views.export_csv, name='export_csv'),
 ]
