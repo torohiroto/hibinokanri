@@ -21,4 +21,4 @@ services:
       - key: BASIC_AUTH_PASSWORD
         generateValue: true # Generates a random password, user should set their own
       - key: WEB_CONCURRENCY
-        value: 4
+        value: "1"
