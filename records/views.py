@@ -73,63 +73,35 @@ def data_visualization(request):
     return render(request, 'records/visualization.html', context)
 
 def get_weather_data(request):
+    # (Same as before)
     target_date_str = request.GET.get('date')
     if not target_date_str:
         return JsonResponse({'error': '日付が指定されていません。'}, status=400)
-
     try:
         target_date = datetime.strptime(target_date_str, '%Y-%m-%d').date()
     except ValueError:
         return JsonResponse({'error': '無効な日付形式です。YYYY-MM-DD形式で指定してください。'}, status=400)
-
     lat = 34.0663
     lon = 132.9949
-
     try:
-        # --- Get main weather data ---
-        weather_params = {
-            "latitude": lat,
-            "longitude": lon,
-            "daily": "weather_code,temperature_2m_max,temperature_2m_min,pressure_msl_max,pressure_msl_min,relative_humidity_2m_mean",
-            "timezone": "Asia/Tokyo",
-            "start_date": target_date_str,
-            "end_date": target_date_str,
-        }
+        weather_params = {"latitude": lat, "longitude": lon, "daily": "weather_code,temperature_2m_max,temperature_2m_min,pressure_msl_max,pressure_msl_min,relative_humidity_2m_mean", "timezone": "Asia/Tokyo", "start_date": target_date_str, "end_date": target_date_str}
         weather_url = "https://api.open-meteo.com/v1/forecast"
         response_weather = requests.get(weather_url, params=weather_params)
         response_weather.raise_for_status()
         weather_data = response_weather.json()
-
-        # --- Get air quality data ---
-        air_quality_params = {
-            "latitude": lat,
-            "longitude": lon,
-            "hourly": "pm2_5",
-            "start_date": target_date_str,
-            "end_date": target_date_str,
-            "timezone": "Asia/Tokyo",
-        }
+        air_quality_params = {"latitude": lat, "longitude": lon, "hourly": "pm2_5", "start_date": target_date_str, "end_date": target_date_str, "timezone": "Asia/Tokyo"}
         air_quality_url = "https://air-quality-api.open-meteo.com/v1/air-quality"
         response_air = requests.get(air_quality_url, params=air_quality_params)
         response_air.raise_for_status()
         air_data = response_air.json()
-
-        # --- Process and combine data ---
         daily_data = weather_data.get('daily', {})
-
-        weather_code_mapping = {
-            0: 'sunny', 1: 'sunny', 2: 'cloudy', 3: 'cloudy', 45: 'cloudy', 48: 'cloudy',
-            51: 'rainy', 53: 'rainy', 55: 'rainy', 61: 'rainy', 63: 'rainy', 65: 'rainy',
-            80: 'rainy', 81: 'rainy', 82: 'rainy',
-        }
+        weather_code_mapping = {0: 'sunny', 1: 'sunny', 2: 'cloudy', 3: 'cloudy', 45: 'cloudy', 48: 'cloudy', 51: 'rainy', 53: 'rainy', 55: 'rainy', 61: 'rainy', 63: 'rainy', 65: 'rainy', 80: 'rainy', 81: 'rainy', 82: 'rainy'}
         weather_code = daily_data.get('weather_code', [None])[0]
-
         pm25_avg = None
         if air_data.get('hourly', {}).get('pm2_5'):
             pm25_values = [v for v in air_data['hourly']['pm2_5'] if v is not None]
             if pm25_values:
                 pm25_avg = sum(pm25_values) / len(pm25_values)
-
         pm25_rating = ''
         if pm25_avg is not None:
             if pm25_avg <= 12: pm25_rating = 'S'
@@ -137,19 +109,8 @@ def get_weather_data(request):
             elif pm25_avg <= 55: pm25_rating = 'B'
             elif pm25_avg <= 150: pm25_rating = 'C'
             else: pm25_rating = 'D'
-
-        mapped_data = {
-            'weather': weather_code_mapping.get(weather_code, ''),
-            'max_temperature': daily_data.get('temperature_2m_max', [None])[0],
-            'min_temperature': daily_data.get('temperature_2m_min', [None])[0],
-            'max_pressure': daily_data.get('pressure_msl_max', [None])[0],
-            'min_pressure': daily_data.get('pressure_msl_min', [None])[0],
-            'humidity': daily_data.get('relative_humidity_2m_mean', [None])[0],
-            'pm25': pm25_rating,
-        }
-
+        mapped_data = {'weather': weather_code_mapping.get(weather_code, ''), 'max_temperature': daily_data.get('temperature_2m_max', [None])[0], 'min_temperature': daily_data.get('temperature_2m_min', [None])[0], 'max_pressure': daily_data.get('pressure_msl_max', [None])[0], 'min_pressure': daily_data.get('pressure_msl_min', [None])[0], 'humidity': daily_data.get('relative_humidity_2m_mean', [None])[0], 'pm25': pm25_rating}
         return JsonResponse(mapped_data)
-
     except requests.exceptions.RequestException as e:
         print(f"--- API Request Error: {e}")
         traceback.print_exc()
@@ -162,80 +123,60 @@ def get_weather_data(request):
 def export_csv(request):
     response = HttpResponse(content_type='text/csv; charset=utf-8-sig')
     response['Content-Disposition'] = 'attachment; filename="daily_records.csv"'
-
     writer = csv.writer(response)
-
-    # Write header row
     header = [field.verbose_name for field in DailyRecord._meta.fields]
     writer.writerow(header)
-
-    # Write data rows
     records = DailyRecord.objects.all().order_by('date')
     for record in records:
-        row = [
-            record.id,
-            record.date,
-            record.get_weather_display(), # Use display value for choice fields
-            record.max_pressure,
-            record.min_pressure,
-            record.max_temperature,
-            record.min_temperature,
-            record.humidity,
-            record.pollen,
-            record.pm25,
-            record.my_mood,
-            record.wife_mood,
-            record.get_headache_medicine_display(),
-            "有り" if record.mishap else "無し", # Display value for boolean
-            record.diary,
-        ]
+        row = [record.id, record.date, record.get_weather_display(), record.max_pressure, record.min_pressure, record.max_temperature, record.min_temperature, record.humidity, record.pollen, record.pm25, record.my_mood, record.wife_mood, record.get_headache_medicine_display(), "有り" if record.mishap else "無し", record.diary]
         writer.writerow(row)
-
     return response
 
 def ai_analysis(request):
     records = DailyRecord.objects.all()
-    if len(records) < 2:
-        # Not enough data to perform analysis
-        return render(request, 'records/ai_analysis.html', {'error': '分析するにはデータが不足しています。少なくとも2日分の記録を入力してください。'})
+    if len(records) < 5: # Increase threshold for meaningful analysis
+        return render(request, 'records/ai_analysis.html', {'error': '分析するにはデータが不足しています。少なくとも5日分の記録を入力してください。'})
 
-    # Convert queryset to DataFrame
     df = pd.DataFrame(list(records.values()))
+    if df.empty:
+        return render(request, 'records/ai_analysis.html', {'error': '分析するデータがありません。'})
 
-    # --- Preprocessing ---
-    # Convert categorical data to numerical data
     rating_mapping = {'S': 5, 'A': 4, 'B': 3, 'C': 2, 'D': 1}
     df['my_mood_num'] = df['my_mood'].map(rating_mapping)
     df['wife_mood_num'] = df['wife_mood'].map(rating_mapping)
     df['pollen_num'] = df['pollen'].map(rating_mapping)
     df['pm25_num'] = df['pm25'].map(rating_mapping)
 
-    # One-hot encode weather
-    df = pd.get_dummies(df, columns=['weather'], prefix='weather')
+    # One-hot encode weather. Check if column exists.
+    if 'weather' in df.columns:
+        df = pd.get_dummies(df, columns=['weather'], prefix='weather', dummy_na=True)
 
-    # Convert boolean to integer
     df['headache_medicine_num'] = df['headache_medicine'].apply(lambda x: 1 if x == 'yes' else (0 if x == 'no' else None))
     df['mishap_num'] = df['mishap'].astype(int)
 
-    # Select only numerical columns for correlation
-    numerical_cols = [
-        'my_mood_num', 'wife_mood_num', 'max_pressure', 'min_pressure',
-        'max_temperature', 'min_temperature', 'humidity', 'pollen_num', 'pm25_num',
-        'headache_medicine_num', 'mishap_num', 'weather_sunny', 'weather_cloudy', 'weather_rainy'
-    ]
+    base_cols = ['max_pressure', 'min_pressure', 'max_temperature', 'min_temperature', 'humidity']
+    mood_cols = ['my_mood_num', 'wife_mood_num']
+    rating_cols = ['pollen_num', 'pm25_num']
+    binary_cols = ['headache_medicine_num', 'mishap_num']
+    weather_cols = [col for col in df.columns if 'weather_' in col]
 
-    # Drop rows with any missing values for correlation analysis
-    df_corr = df[numerical_cols].dropna()
+    numerical_cols = base_cols + mood_cols + rating_cols + binary_cols + weather_cols
+
+    # Filter out columns that don't exist in the DataFrame
+    existing_cols = [col for col in numerical_cols if col in df.columns]
+
+    df_corr = df[existing_cols].dropna()
 
     if len(df_corr) < 2:
         return render(request, 'records/ai_analysis.html', {'error': '分析可能な数値データが不足しています。'})
 
-    # Calculate correlation matrix
     corr_matrix = df_corr.corr()
 
-    # Get correlations with moods
-    my_mood_corr = corr_matrix['my_mood_num'].sort_values(ascending=False)
-    wife_mood_corr = corr_matrix['wife_mood_num'].sort_values(ascending=False)
+    if 'my_mood_num' not in corr_matrix or 'wife_mood_num' not in corr_matrix:
+         return render(request, 'records/ai_analysis.html', {'error': '機嫌のデータが不足しているため、相関を計算できません。'})
+
+    my_mood_corr = corr_matrix['my_mood_num'].sort_values(ascending=False, key=abs).drop('my_mood_num')
+    wife_mood_corr = corr_matrix['wife_mood_num'].sort_values(ascending=False, key=abs).drop('wife_mood_num')
 
     context = {
         'my_mood_corr': my_mood_corr.to_dict(),
