@@ -8,11 +8,12 @@ from django.http import JsonResponse, HttpResponse
 from datetime import datetime, date
 import traceback
 import csv
-import pandas as pd
+# import pandas as pd  <- REMOVED FROM HERE
 
 def index(request):
     return render(request, 'records/index.html')
 
+# ... (other views are the same) ...
 def record_list(request):
     records = DailyRecord.objects.all()
     return render(request, 'records/record_list.html', {'records': records})
@@ -73,7 +74,6 @@ def data_visualization(request):
     return render(request, 'records/visualization.html', context)
 
 def get_weather_data(request):
-    # (Same as before)
     target_date_str = request.GET.get('date')
     if not target_date_str:
         return JsonResponse({'error': '日付が指定されていません。'}, status=400)
@@ -133,8 +133,10 @@ def export_csv(request):
     return response
 
 def ai_analysis(request):
+    import pandas as pd # <- MOVED HERE
+
     records = DailyRecord.objects.all()
-    if len(records) < 5: # Increase threshold for meaningful analysis
+    if len(records) < 5:
         return render(request, 'records/ai_analysis.html', {'error': '分析するにはデータが不足しています。少なくとも5日分の記録を入力してください。'})
 
     df = pd.DataFrame(list(records.values()))
@@ -147,7 +149,6 @@ def ai_analysis(request):
     df['pollen_num'] = df['pollen'].map(rating_mapping)
     df['pm25_num'] = df['pm25'].map(rating_mapping)
 
-    # One-hot encode weather. Check if column exists.
     if 'weather' in df.columns:
         df = pd.get_dummies(df, columns=['weather'], prefix='weather', dummy_na=True)
 
@@ -160,10 +161,7 @@ def ai_analysis(request):
     binary_cols = ['headache_medicine_num', 'mishap_num']
     weather_cols = [col for col in df.columns if 'weather_' in col]
 
-    numerical_cols = base_cols + mood_cols + rating_cols + binary_cols + weather_cols
-
-    # Filter out columns that don't exist in the DataFrame
-    existing_cols = [col for col in numerical_cols if col in df.columns]
+    existing_cols = [col for col in (base_cols + mood_cols + rating_cols + binary_cols + weather_cols) if col in df.columns]
 
     df_corr = df[existing_cols].dropna()
 
