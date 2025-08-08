@@ -8,6 +8,7 @@ from django.http import JsonResponse, HttpResponse
 from datetime import datetime, date
 import traceback
 import csv
+import pandas as pd
 
 def index(request):
     return render(request, 'records/index.html')
@@ -191,3 +192,54 @@ def export_csv(request):
         writer.writerow(row)
 
     return response
+
+def ai_analysis(request):
+    records = DailyRecord.objects.all()
+    if len(records) < 2:
+        # Not enough data to perform analysis
+        return render(request, 'records/ai_analysis.html', {'error': '分析するにはデータが不足しています。少なくとも2日分の記録を入力してください。'})
+
+    # Convert queryset to DataFrame
+    df = pd.DataFrame(list(records.values()))
+
+    # --- Preprocessing ---
+    # Convert categorical data to numerical data
+    rating_mapping = {'S': 5, 'A': 4, 'B': 3, 'C': 2, 'D': 1}
+    df['my_mood_num'] = df['my_mood'].map(rating_mapping)
+    df['wife_mood_num'] = df['wife_mood'].map(rating_mapping)
+    df['pollen_num'] = df['pollen'].map(rating_mapping)
+    df['pm25_num'] = df['pm25'].map(rating_mapping)
+
+    # One-hot encode weather
+    df = pd.get_dummies(df, columns=['weather'], prefix='weather')
+
+    # Convert boolean to integer
+    df['headache_medicine_num'] = df['headache_medicine'].apply(lambda x: 1 if x == 'yes' else (0 if x == 'no' else None))
+    df['mishap_num'] = df['mishap'].astype(int)
+
+    # Select only numerical columns for correlation
+    numerical_cols = [
+        'my_mood_num', 'wife_mood_num', 'max_pressure', 'min_pressure',
+        'max_temperature', 'min_temperature', 'humidity', 'pollen_num', 'pm25_num',
+        'headache_medicine_num', 'mishap_num', 'weather_sunny', 'weather_cloudy', 'weather_rainy'
+    ]
+
+    # Drop rows with any missing values for correlation analysis
+    df_corr = df[numerical_cols].dropna()
+
+    if len(df_corr) < 2:
+        return render(request, 'records/ai_analysis.html', {'error': '分析可能な数値データが不足しています。'})
+
+    # Calculate correlation matrix
+    corr_matrix = df_corr.corr()
+
+    # Get correlations with moods
+    my_mood_corr = corr_matrix['my_mood_num'].sort_values(ascending=False)
+    wife_mood_corr = corr_matrix['wife_mood_num'].sort_values(ascending=False)
+
+    context = {
+        'my_mood_corr': my_mood_corr.to_dict(),
+        'wife_mood_corr': wife_mood_corr.to_dict(),
+    }
+
+    return render(request, 'records/ai_analysis.html', context)
