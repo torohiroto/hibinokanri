@@ -159,7 +159,7 @@ def get_weather_data(request):
         return JsonResponse({'error': 'サーバーで予期せぬエラーが発生しました。'}, status=500)
 
 def export_csv(request):
-    response = HttpResponse(content_type='text/csv; charset=utf-8')
+    response = HttpResponse(content_type='text/csv; charset=utf-8-sig')
     response['Content-Disposition'] = 'attachment; filename="daily_records.csv"'
 
     writer = csv.writer(response)
